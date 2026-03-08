@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""blueprint-decode — decode a Factorio blueprint string to pretty-printed JSON.
+
+Usage:
+    echo '<blueprint string>' | blueprint-decode
+    blueprint-decode < blueprint.txt
+    blueprint-decode '0eNq...'
+    blueprint-decode --file blueprint.txt
+"""
+
+import argparse
+import base64
+import json
+import sys
+import zlib
+
+
+def decode_blueprint(raw: str) -> dict:
+    """Decode a Factorio blueprint string to a Python dict.
+
+    Factorio blueprint format:
+      - First character is a version byte (e.g. '0')
+      - Remainder is base64-encoded zlib-compressed JSON
+    """
+    raw = raw.strip()
+
+    if not raw:
+        raise ValueError("empty input")
+
+    if not raw[0].isdigit():
+        raise ValueError(f"unexpected version character '{raw[0]}'")
+
+    b64_payload = raw[1:]
+
+    try:
+        compressed = base64.b64decode(b64_payload)
+    except Exception as e:
+        raise ValueError(f"base64 decode failed: {e}") from e
+
+    try:
+        decompressed = zlib.decompress(compressed)
+    except zlib.error as e:
+        raise ValueError(f"zlib decompress failed: {e}") from e
+
+    try:
+        return json.loads(decompressed)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON parse failed: {e}") from e
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Decode a Factorio blueprint string to pretty-printed JSON.",
+        epilog="Reads from stdin if no positional argument or --file is given.",
+    )
+    parser.add_argument(
+        "blueprint",
+        nargs="?",
+        default=None,
+        help="Blueprint string to decode (if not using stdin or --file)",
+    )
+    parser.add_argument(
+        "-f", "--file",
+        default=None,
+        help="Read blueprint string from a file",
+    )
+    parser.add_argument(
+        "-c", "--compact",
+        action="store_true",
+        help="Output compact JSON (no indentation)",
+    )
+    args = parser.parse_args()
+
+    # Determine input source
+    if args.blueprint:
+        raw = args.blueprint
+    elif args.file:
+        try:
+            with open(args.file) as f:
+                raw = f.read()
+        except FileNotFoundError:
+            print(f"blueprint-decode: error: file not found: {args.file}", file=sys.stderr)
+            return 1
+    elif not sys.stdin.isatty():
+        raw = sys.stdin.read()
+    else:
+        parser.print_help(sys.stderr)
+        return 1
+
+    try:
+        obj = decode_blueprint(raw)
+    except ValueError as e:
+        print(f"blueprint-decode: error: {e}", file=sys.stderr)
+        return 1
+
+    indent = None if args.compact else 2
+    print(json.dumps(obj, indent=indent, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
