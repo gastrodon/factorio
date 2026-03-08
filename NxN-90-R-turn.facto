@@ -1,0 +1,143 @@
+# ─── NxN 90° Right Turn ──────────────────────────────────────────
+# A function that generates a width×width block of transport belts
+# forming a smooth 90-degree right turn.
+#
+# Input belts flow east (→), output belts flow south (↓).
+# The turn cascades from the outermost lane inward:
+#
+#   width=1:  |       width=2:  =|      width=3:  ==|
+#                               ||                 =||
+#                                                  |||
+#
+#   width=4:  ===|    width=5:  ====|
+#             ==||              ===||
+#             =|||              ==|||
+#             ||||              =||||
+#                               |||||
+#
+# Algorithm: For each row y (0..width), the belt at column x faces:
+#   - East  (dir=4) if x < width - 1 - y   (straight segment)
+#   - South (dir=8) if x >= width - 1 - y  (turned segment)
+#
+# This is implemented as two for-loops per row with computed bounds,
+# since Facto has no compile-time if/else for entity properties.
+#
+# ─── CODEGEN NOTE ────────────────────────────────────────────────
+# This file is human-readable documentation of the layout pattern.
+# It cannot be parameterized from the CLI because factompile resolves
+# for-loop ranges at declaration time — int function params and
+# variables depending on outer loop iterators cannot be inner loop
+# bounds. The compiler errors with:
+#   "Variable 'corner' must have a compile-time constant value"
+#
+# To parameterize: create `NxN-90-R-turn.py` — a Python codegen
+# script that implements the turn algorithm, accepts --width via CLI,
+# generates .facto source with literal values, and pipes it through
+# `factompile -i` to emit a blueprint string.
+# ──────────────────────────────────────────────────────────────────
+
+# ─── Right Turn Function ─────────────────────────────────────────
+# Places a width×width grid of belts turning 90° right (east→south).
+# The turn block is placed at the origin (0, 0).
+func right_turn(int width) {
+    for y in 0..width {
+        # Corner column: where east-facing belts end and south-facing begin.
+        # Must be an int variable because for-loop bounds only accept
+        # NAME or NUMBER tokens (no inline expressions).
+        int corner = width - 1 - y;
+
+        # East-facing belts: columns 0 to (corner - 1)
+        # These are the straight horizontal segments before the corner.
+        for x in 0..corner {
+            Entity belt = place("transport-belt",
+                x, y, {direction: 4});
+        }
+
+        # South-facing belts: columns corner to (width - 1)
+        # These are the turned segments, including the corner piece.
+        # Factorio auto-renders the corner graphic when a south belt
+        # receives input from the west.
+        for x in corner..width {
+            Entity belt = place("transport-belt",
+                x, y, {direction: 8});
+        }
+    }
+}
+
+# ─── Examples ─────────────────────────────────────────────────────
+#
+# ── Example 1: Single-lane turn (width=1) ────────────────────────
+#
+#   A single belt that just changes direction from east input to
+#   south output. Only one south-facing belt is placed.
+#
+#     x=0
+#   y=0: ↓
+#
+#   Unrolls to:
+#     place("transport-belt", 0, 0, {direction: 8});
+#
+# right_turn(1);
+
+# ── Example 2: Two-lane turn (width=2) ──────────────────────────
+#
+#   Two lanes turning right. Outer lane turns first, inner lane
+#   turns one row later.
+#
+#     x=0  x=1
+#   y=0: →   ↓
+#   y=1: ↓   ↓
+#
+#   Unrolls to:
+#     place("transport-belt", 0, 0, {direction: 4});  # row 0: 1 east
+#     place("transport-belt", 1, 0, {direction: 8});  # row 0: 1 south
+#     place("transport-belt", 0, 1, {direction: 8});  # row 1: 2 south
+#     place("transport-belt", 1, 1, {direction: 8});
+#
+# right_turn(2);
+
+# ── Example 3: Three-lane turn (width=3) — DEFAULT ──────────────
+#
+#   Three lanes cascade from outside to inside.
+#
+#     x=0  x=1  x=2
+#   y=0: →   →   ↓
+#   y=1: →   ↓   ↓
+#   y=2: ↓   ↓   ↓
+#
+#   Unrolls to:
+#     # Row 0: 2 east + 1 south
+#     place("transport-belt", 0, 0, {direction: 4});
+#     place("transport-belt", 1, 0, {direction: 4});
+#     place("transport-belt", 2, 0, {direction: 8});
+#     # Row 1: 1 east + 2 south
+#     place("transport-belt", 0, 1, {direction: 4});
+#     place("transport-belt", 1, 1, {direction: 8});
+#     place("transport-belt", 2, 1, {direction: 8});
+#     # Row 2: 0 east + 3 south
+#     place("transport-belt", 0, 2, {direction: 8});
+#     place("transport-belt", 1, 2, {direction: 8});
+#     place("transport-belt", 2, 2, {direction: 8});
+
+right_turn(3);
+
+# ── Example 4: Four-lane turn (width=4) ─────────────────────────
+#
+#     x=0  x=1  x=2  x=3
+#   y=0: →   →   →   ↓
+#   y=1: →   →   ↓   ↓
+#   y=2: →   ↓   ↓   ↓
+#   y=3: ↓   ↓   ↓   ↓
+#
+# right_turn(4);
+
+# ── Example 5: Five-lane turn (width=5) ─────────────────────────
+#
+#     x=0  x=1  x=2  x=3  x=4
+#   y=0: →   →   →   →   ↓
+#   y=1: →   →   →   ↓   ↓
+#   y=2: →   →   ↓   ↓   ↓
+#   y=3: →   ↓   ↓   ↓   ↓
+#   y=4: ↓   ↓   ↓   ↓   ↓
+#
+# right_turn(5);
