@@ -4,6 +4,8 @@ __pycache__/
 .direnv/
 result
 
+*.bp
+
 agent/
 
 .claude/settings.local.json

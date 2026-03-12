@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Clean up generated .bp blueprint files
+#
+# Usage:
+#     ./script/clean              # Delete all .bp files
+#     ./script/clean --dry-run    # Show what would be deleted
+
+set -euo pipefail
+
+# Parse arguments
+DRY_RUN=0
+if [[ "${1:-}" == "--dry-run" ]] || [[ "${1:-}" == "-n" ]]; then
+    DRY_RUN=1
+fi
+
+# Find all .bp files
+echo "Searching for .bp files..."
+BP_FILES=$(find . -name "*.bp" -type f 2>/dev/null || true)
+
+if [[ -z "$BP_FILES" ]]; then
+    echo "No .bp files found."
+    exit 0
+fi
+
+# Count files
+FILE_COUNT=$(echo "$BP_FILES" | wc -l)
+echo "Found $FILE_COUNT .bp file(s):"
+echo "$BP_FILES" | sed 's/^/  /'
+
+if [[ $DRY_RUN -eq 1 ]]; then
+    echo ""
+    echo "DRY RUN: No files were deleted."
+    echo "Run without --dry-run to actually delete these files."
+    exit 0
+fi
+
+# Confirm deletion
+echo ""
+read -p "Delete these files? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Cancelled."
+    exit 0
+fi
+
+# Delete files
+echo "Deleting..."
+find . -name "*.bp" -type f -delete
+echo "Done! Deleted $FILE_COUNT file(s)."
