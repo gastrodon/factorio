@@ -5,3 +5,5 @@ __pycache__/
 result
 
 agent/
+
+.claude/settings.local.json
