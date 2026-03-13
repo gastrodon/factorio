@@ -17,26 +17,37 @@ INPUT:  (0, 0) receives from segment left belt at (0, 0) flowing North
 OUTPUT: (8, 0) flowing South into segment right belt at (8, 0)
 """
 
+from dataclasses import dataclass
+
 from draftsman.classes.blueprint import Blueprint
 from draftsman.prototypes.transport_belt import TransportBelt
 
 
-def create_blueprint() -> Blueprint:
-    bp = Blueprint()
-    bp.label = "Burner Line Loop"
-    bp.description = "Fuel return loop connecting left North belt to right South belt"
-
-    # East-flowing row across the top (x=0..7)
-    for x in range(8):
-        bp.entities.append(TransportBelt("transport-belt", position=(x, 0), direction=4))  # East
-
-    # Turn South at the right edge to feed back down into x=8 fuel column
-    bp.entities.append(TransportBelt("transport-belt", position=(8, 0), direction=8))  # South
-
-    return bp
+@dataclass
+class BurnerLineLoopParams:
+    width: int = 8
 
 
-blueprint = create_blueprint()
+class BurnerLineLoop(Blueprint):
+    def __init__(self, params: BurnerLineLoopParams = BurnerLineLoopParams()) -> None:
+        super().__init__()
+        self.label = "Burner Line Loop"
+        self.description = "Fuel return loop connecting left North belt to right South belt"
+
+        # (direction, positions in flow order)
+        self.belt_segments = [
+            (4, [(0, 0)]),                                      # First bend
+            *[(4, [(x, 0)]) for x in range(1, params.width)],   # East across top
+            (8, [(params.width, 0)]),                            # South turn at end
+        ]
+
+        self._place_belts()
+
+    def _place_belts(self) -> None:
+        for direction, positions in self.belt_segments:
+            for pos in positions:
+                self.entities.append(TransportBelt("transport-belt", position=pos, direction=direction))
+
 
 if __name__ == "__main__":
-    print(blueprint.to_string())
+    print(BurnerLineLoop().to_string())

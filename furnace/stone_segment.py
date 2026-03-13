@@ -22,45 +22,48 @@ from draftsman.prototypes.inserter import Inserter
 from draftsman.prototypes.transport_belt import TransportBelt
 
 
-def create_blueprint() -> Blueprint:
-    """Create and return the stone furnace segment blueprint."""
-    bp = Blueprint()
-    bp.label = "Stone Furnace Segment"
-    bp.description = "Single tileable stone furnace segment with belt I/O"
+class StoneFurnaceSegment(Blueprint):
+    def __init__(self) -> None:
+        super().__init__()
+        self.label = "Stone Furnace Segment"
+        self.description = "Single tileable stone furnace segment with belt I/O"
 
-    bp.entities.append(
-        Furnace("stone-furnace", position=(-3, 0))
-    )
+        # (position,)
+        self.furnaces = [
+            ((-3, 0),),
+        ]
 
-    # Long-handed inserter feeds furnace from right belt (facing West = 12)
-    bp.entities.append(
-        Inserter("long-handed-inserter", position=(-1.5, 0.5), direction=12)
-    )
+        # (name, position, direction)
+        self.inserters = [
+            ("long-handed-inserter", (-1.5, 0.5), 12),  # West, feeds furnace
+            ("inserter", (-1.5, -0.5), 4),               # East, pulls output
+        ]
 
-    # Regular inserter pulls output from furnace to belt (facing East = 4)
-    bp.entities.append(
-        Inserter("inserter", position=(-1.5, -0.5), direction=4)
-    )
+        # (direction, positions in flow order)
+        self.belt_segments = [
+            (8, [(-0.5, -0.5)]),  # South
+            (8, [(-0.5, 0.5)]),   # South
+            (8, [(0.5, -0.5)]),   # South
+            (8, [(0.5, 0.5)]),    # South
+        ]
 
-    # Belt column at x=-0.5 (flowing South = direction 8)
-    bp.entities.append(
-        TransportBelt("transport-belt", position=(-0.5, -0.5), direction=8)
-    )
-    bp.entities.append(
-        TransportBelt("transport-belt", position=(-0.5, 0.5), direction=8)
-    )
+        self._place_furnaces()
+        self._place_inserters()
+        self._place_belts()
 
-    # Belt column at x=0.5 (flowing South = direction 8)
-    bp.entities.append(
-        TransportBelt("transport-belt", position=(0.5, -0.5), direction=8)
-    )
-    bp.entities.append(
-        TransportBelt("transport-belt", position=(0.5, 0.5), direction=8)
-    )
+    def _place_furnaces(self) -> None:
+        for (pos,) in self.furnaces:
+            self.entities.append(Furnace("stone-furnace", position=pos))
 
-    return bp
+    def _place_inserters(self) -> None:
+        for name, pos, direction in self.inserters:
+            self.entities.append(Inserter(name, position=pos, direction=direction))
+
+    def _place_belts(self) -> None:
+        for direction, positions in self.belt_segments:
+            for pos in positions:
+                self.entities.append(TransportBelt("transport-belt", position=pos, direction=direction))
 
 
 if __name__ == "__main__":
-    blueprint = create_blueprint()
-    print(blueprint.to_string())
+    print(StoneFurnaceSegment().to_string())

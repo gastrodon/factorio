@@ -25,39 +25,48 @@ from draftsman.prototypes.inserter import Inserter
 from draftsman.prototypes.transport_belt import TransportBelt
 
 
-def create_blueprint() -> Blueprint:
-    bp = Blueprint()
-    bp.label = "Burner Line Segment"
-    bp.description = "Single tileable burner drill segment with fuel and ore belts"
+class BurnerLineSegment(Blueprint):
+    def __init__(self) -> None:
+        super().__init__()
+        self.label = "Burner Line Segment"
+        self.description = "Single tileable burner drill segment with fuel and ore belts"
 
-    # Left fuel input belts (flowing South)
-    bp.entities.append(TransportBelt("transport-belt", position=(0, 0), direction=0))  # North
-    bp.entities.append(TransportBelt("transport-belt", position=(0, 1), direction=0))  # North
+        # (direction, positions in flow order)
+        self.belt_segments = [
+            (0, [(0, 0), (0, 1)]),   # Left fuel input (North)
+            (8, [(4, 0), (4, 1)]),   # Middle ore output (South)
+            (8, [(8, 0), (8, 1)]),   # Right fuel passthrough (South)
+        ]
 
-    # First burner inserter (feeds drill 1 from left fuel belt)
-    bp.entities.append(Inserter("burner-inserter", position=(1, 0), direction=12))  # West
+        # (position, direction)
+        self.drills = [
+            ((3, 1), 4),   # East, outputs to middle belt
+            ((6, 1), 12),  # West, outputs to middle belt
+        ]
 
-    # First drill (facing East, outputs ore to middle belt at x=4)
-    bp.entities.append(MiningDrill("burner-mining-drill", position=(3, 1), direction=4))  # East
+        # (position, direction)
+        self.inserters = [
+            ((1, 0), 12),  # West, feeds left drill
+            ((7, 0), 4),   # East, feeds right drill
+        ]
 
-    # Middle ore belts (flowing South)
-    bp.entities.append(TransportBelt("transport-belt", position=(4, 0), direction=8))  # South
-    bp.entities.append(TransportBelt("transport-belt", position=(4, 1), direction=8))  # South
+        self._place_belts()
+        self._place_drills()
+        self._place_inserters()
 
-    # Second drill (facing West, outputs ore to middle belt at x=4)
-    bp.entities.append(MiningDrill("burner-mining-drill", position=(6, 1), direction=12))  # West
+    def _place_belts(self) -> None:
+        for direction, positions in self.belt_segments:
+            for pos in positions:
+                self.entities.append(TransportBelt("transport-belt", position=pos, direction=direction))
 
-    # Second burner inserter (feeds drill 2 from right fuel belt)
-    bp.entities.append(Inserter("burner-inserter", position=(7, 0), direction=4))  # East
+    def _place_drills(self) -> None:
+        for pos, direction in self.drills:
+            self.entities.append(MiningDrill("burner-mining-drill", position=pos, direction=direction))
 
-    # Right fuel passthrough belts (flowing South)
-    bp.entities.append(TransportBelt("transport-belt", position=(8, 0), direction=8))  # South
-    bp.entities.append(TransportBelt("transport-belt", position=(8, 1), direction=8))  # South
+    def _place_inserters(self) -> None:
+        for pos, direction in self.inserters:
+            self.entities.append(Inserter("burner-inserter", position=pos, direction=direction))
 
-    return bp
-
-
-blueprint = create_blueprint()
 
 if __name__ == "__main__":
-    print(blueprint.to_string())
+    print(BurnerLineSegment().to_string())
