@@ -32,6 +32,12 @@
               echo "Installing Python packages..."
               uv pip install factompile factorio-draftsman
             fi
+
+            # Install test dependencies
+            if ! python -c "import pytest" 2>/dev/null; then
+              echo "Installing test dependencies..."
+              uv pip install pytest
+            fi
           '';
 
           # Ensure pip/uv can build native extensions if needed
